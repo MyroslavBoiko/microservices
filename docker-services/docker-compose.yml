@@ -16,10 +16,10 @@ services:
       - '4566-4583:4566-4583'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./script/localstack/s3:/etc/localstack/init/ready.d
+      - ./script/localstack/s3/init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh
 
-  postgres:
-    container_name: postgres_db
+  resource:
+    container_name: resource_db
     image: postgres:latest
     restart: always
     environment:
@@ -33,5 +33,22 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - ./db-data/:/var/lib/postgresql/data/
-      - ./script/sql:/docker-entrypoint-initdb.d/
+      - ./db-data/resource/:/var/lib/postgresql/data/
+      - ./script/resource/sql:/docker-entrypoint-initdb.d/
+  songs:
+    container_name: songs_db
+    image: postgres:latest
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=songs
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    ports:
+      - '5433:5432'
+    volumes:
+      - ./db-data/songs/:/var/lib/postgresql/data/
+      - ./script/songs/sql:/docker-entrypoint-initdb.d/
