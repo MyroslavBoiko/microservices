@@ -21,7 +21,6 @@ public class SongDto {
     private String album;
 
     @NotBlank(message = "Please provide song length")
-    @Pattern(regexp = "\\d*:\\d{2}", message = "Please provide song length in the valid format")
     private String length;
 
     @NotNull(message = "Please provide resource id")
