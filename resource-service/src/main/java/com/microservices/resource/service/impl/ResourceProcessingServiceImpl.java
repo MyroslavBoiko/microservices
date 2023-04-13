@@ -1,8 +1,14 @@
 package com.microservices.resource.service.impl;
 
 import com.amazonaws.services.s3.model.S3Object;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.util.JSONPObject;
 import com.microservices.resource.entity.FileMeta;
 import com.microservices.resource.exception.FileMetaNotFoundException;
+import com.microservices.resource.exception.JsonConvertException;
 import com.microservices.resource.repository.FileMetaRepository;
 import com.microservices.resource.service.AmazonS3Service;
 import com.microservices.resource.service.ResourceProcessingService;
@@ -25,6 +31,7 @@ public class ResourceProcessingServiceImpl implements ResourceProcessingService 
 
     private AmazonS3Service amazonS3Service;
     private FileMetaRepository fileMetaRepository;
+    private KafkaMessageProducer kafkaMessageProducer;
 
     @Transactional
     @Override
@@ -39,6 +46,14 @@ public class ResourceProcessingServiceImpl implements ResourceProcessingService 
         // Uploading file to s3
         amazonS3Service.upload(key, file);
 
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode objectNode = objectMapper.createObjectNode();
+        objectNode.put("resourceId", saved.getId());
+        try {
+            kafkaMessageProducer.sendMessage(objectMapper.writeValueAsString(objectNode));
+        } catch (JsonProcessingException e) {
+            throw new JsonConvertException(e.getMessage());
+        }
         return saved.getId();
     }
 
