@@ -11,7 +11,9 @@ sourceCompatibility = '17'
 repositories {
     mavenCentral()
 }
-
+ext {
+    set('testcontainersVersion', "1.18.0")
+}
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -26,10 +28,23 @@ dependencies {
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
+    //TestContainers
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+
+}
+dependencyManagement {
+    imports {
+        mavenBom "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
+    }
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    include '**com/microservices/songservice/*'
+    include '**com/microservices/songservice/controller/*'
+    include '**com/microservices/songservice/service/impl/*'
 }
 
 compileJava {
@@ -40,4 +55,10 @@ compileJava {
             '-Amapstruct.suppressGeneratorVersionInfoComment=true'
 
     ]
+}
+
+test {
+    testLogging {
+        events "PASSED", "SKIPPED", "FAILED"
+    }
 }
