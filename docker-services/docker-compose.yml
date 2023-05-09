@@ -17,8 +17,12 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./script/localstack/s3/init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh
-
-  resource:
+    networks:
+      default:
+        aliases:
+          - s3.localhost.localstack.cloud
+          - ${AWS_S3_BUCKET_NAME}.s3.localhost.localstack.cloud
+  resource_db:
     container_name: resource_db
     image: postgres:latest
     restart: always
@@ -31,11 +35,11 @@ services:
         max-size: 10m
         max-file: "3"
     ports:
-      - '5432:5432'
+      - '5434:5432'
     volumes:
       - ./db-data/resource/:/var/lib/postgresql/data/
       - ./script/resource/sql:/docker-entrypoint-initdb.d/
-  songs:
+  songs_db:
     container_name: songs_db
     image: postgres:latest
     restart: always
@@ -48,7 +52,7 @@ services:
         max-size: 10m
         max-file: "3"
     ports:
-      - '5433:5432'
+      - '5435:5432'
     volumes:
       - ./db-data/songs/:/var/lib/postgresql/data/
       - ./script/songs/sql:/docker-entrypoint-initdb.d/
@@ -58,7 +62,6 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-
   broker:
     image: confluentinc/cp-kafka:7.3.2
     container_name: broker
@@ -72,7 +75,53 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://broker:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092,PLAINTEXT_INTERNAL://broker:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  resource:
+    container_name: resource
+    image: microservices/resource-service:v1
+    build: '../resource-service/'
+    ports:
+      - '8082:8080'
+    environment:
+      - DB_CONNECTION_URL=${RESOURCE_DB_URL}
+      - DB_NAME=${RESOURCE_DB_NAME}
+      - DB_USERNAME=${RESOURCE_DB_USER}
+      - DB_PASSWORD=${RESOURCE_DB_PASSWORD}
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - AWS_S3_URL=${AWS_S3_URL}
+      - AWS_S3_REGION=${AWS_S3_REGION}
+      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}
+      - AWS_S3_ACCESS_KEY=${AWS_S3_ACCESS_KEY}
+      - AWS_S3_SECRET_KEY=${AWS_S3_SECRET_KEY}
+    depends_on:
+      - localstack
+      - broker
+      - resource_db
+  songs:
+    container_name: songs
+    image: microservices/song-service:v1
+    build: '../song-service/'
+    ports:
+      - '8081:8080'
+    environment:
+      - DB_CONNECTION_URL=${SONGS_DB_URL}
+      - DB_NAME=${SONGS_DB_NAME}
+      - DB_USERNAME=${SONGS_DB_USER}
+      - DB_PASSWORD=${SONGS_DB_PASSWORD}
+    depends_on:
+      - songs_db
+  processor:
+    container_name: processor
+    image: microservices/resource-processor:v1
+    build: '../resource-processor/'
+    ports:
+      - '8083:8080'
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - SONG_SERVICE_URL=${SONG_SERVICE_URL}
+      - RESOURCE_SERVICE_URL=${RESOURCE_SERVICE_URL}
+    depends_on:
+      - broker
