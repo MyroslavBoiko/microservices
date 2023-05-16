@@ -1,16 +1,16 @@
 server:
-  port: 8083
+  port: 8080
 spring:
   application:
     name: resource-processor
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     consumer:
       group-id: spring-boot-kafka
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 url:
-  song-service: http://localhost:8081
-  resource-service: http://localhost:8082
+  song-service: ${SONG_SERVICE_URL}
+  resource-service: ${RESOURCE_SERVICE_URL}
 
