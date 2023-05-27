@@ -96,10 +96,14 @@ services:
       - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}
       - AWS_S3_ACCESS_KEY=${AWS_S3_ACCESS_KEY}
       - AWS_S3_SECRET_KEY=${AWS_S3_SECRET_KEY}
+      - EUREKA_URI=${EUREKA_URI}
+      - RESOURCE_SERVICE_PORT=${RESOURCE_SERVICE_PORT}
     depends_on:
       - localstack
       - broker
       - resource_db
+      - service-registry
+      - gateway
   songs:
     container_name: songs
     image: microservices/song-service:v1
@@ -111,8 +115,12 @@ services:
       - DB_NAME=${SONGS_DB_NAME}
       - DB_USERNAME=${SONGS_DB_USER}
       - DB_PASSWORD=${SONGS_DB_PASSWORD}
+      - EUREKA_URI=${EUREKA_URI}
+      - SONG_SERVICE_PORT=${SONG_SERVICE_PORT}
     depends_on:
       - songs_db
+      - service-registry
+      - gateway
   processor:
     container_name: processor
     image: microservices/resource-processor:v1
@@ -123,5 +131,29 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
       - SONG_SERVICE_URL=${SONG_SERVICE_URL}
       - RESOURCE_SERVICE_URL=${RESOURCE_SERVICE_URL}
+      - EUREKA_URI=${EUREKA_URI}
+      - RESOURCE_PROCESSOR_PORT=${RESOURCE_PROCESSOR_PORT}
+      - CLIENT_SIDE_LOAD_BALANCING=${CLIENT_SIDE_LOAD_BALANCING}
+      - GATEWAY_URL=${GATEWAY_URL}
     depends_on:
       - broker
+      - service-registry
+      - gateway
+  service-registry:
+    container_name: service-registry
+    image: microservices/service-registry:v1
+    build: '../service-registry/'
+    ports:
+      - '8085:8085'
+    environment:
+      - EUREKA_URI=${EUREKA_URI}
+  gateway:
+    container_name: gateway
+    image: microservices/gateway:v1
+    build: '../gateway/'
+    ports:
+      - '8086:8086'
+    environment:
+      - EUREKA_URI=${EUREKA_URI}
+    depends_on:
+      - service-registry

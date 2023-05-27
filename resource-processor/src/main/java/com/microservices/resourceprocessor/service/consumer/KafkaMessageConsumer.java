@@ -8,20 +8,8 @@ import com.microservices.resourceprocessor.dto.SongDto;
 import com.microservices.resourceprocessor.service.MetadataExtractor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tika.exception.TikaException;
-import org.apache.tika.metadata.Metadata;
-import org.apache.tika.parser.ParseContext;
-import org.apache.tika.parser.Parser;
-import org.apache.tika.parser.mp3.Mp3Parser;
-import org.apache.tika.sax.BodyContentHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
-import org.xml.sax.SAXException;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 
 @Component
 @Slf4j
@@ -50,7 +38,7 @@ public class KafkaMessageConsumer {
         SongDto songDto = metadataExtractor.extractSongMetadata(byId, id);
         log.info("Metadata extracted from byte array");
         songServiceClient.create(songDto);
-        log.info("Song metadata sent to song service");
+        log.info("Song metadata sent to song service {}", songDto.toString());
     }
 
 

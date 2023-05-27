@@ -1,16 +1,23 @@
 server:
-  port: 8080
+  port: ${RESOURCE_PROCESSOR_PORT:8083}
 spring:
   application:
     name: resource-processor
+  loadbalanced: ${CLIENT_SIDE_LOAD_BALANCING:false}
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: spring-boot-kafka
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 url:
-  song-service: ${SONG_SERVICE_URL}
-  resource-service: ${RESOURCE_SERVICE_URL}
+  song-service: ${SONG_SERVICE_URL:http://song-service}
+  resource-service: ${RESOURCE_SERVICE_URL:http://resource-service}
+  gateway: ${GATEWAY_URL:http://localhost:8086}
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://localhost:8085/eureka}
+    fetch-registry: true
 
