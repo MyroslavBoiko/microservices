@@ -3,9 +3,12 @@ package com.microservices.resource.service.impl;
 import com.amazonaws.http.apache.request.impl.HttpGetWithBody;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
+import com.microservices.resource.domain.StorageDto;
 import com.microservices.resource.entity.FileMeta;
+import com.microservices.resource.entity.StorageStatus;
 import com.microservices.resource.repository.FileMetaRepository;
 import com.microservices.resource.service.AmazonS3Service;
+import com.microservices.resource.service.StorageService;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +39,9 @@ class ResourceProcessingServiceImplTest {
     private FileMetaRepository fileMetaRepository;
     @Mock
     private KafkaMessageProducer kafkaMessageProducer;
+    @Mock
+    private StorageService storageService;
+
     @InjectMocks
     private ResourceProcessingServiceImpl resourceProcessingService;
 
@@ -51,6 +57,8 @@ class ResourceProcessingServiceImplTest {
         FileMeta fileMeta = new FileMeta();
         fileMeta.setId(1L);
 
+        when(storageService.getStagingDetails())
+                .thenReturn(new StorageDto(1, StorageStatus.STAGING.toString(), "staging", "/stag"));
         when(fileMetaRepository.save(ArgumentMatchers.any())).thenReturn(fileMeta);
 
         long upload = resourceProcessingService.upload(file);

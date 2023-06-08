@@ -1,17 +1,14 @@
 package com.microservices.resource.service.impl;
 
 import com.amazonaws.services.s3.model.S3Object;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.util.JSONPObject;
+import com.microservices.resource.domain.StorageDto;
 import com.microservices.resource.entity.FileMeta;
+import com.microservices.resource.entity.StorageStatus;
 import com.microservices.resource.exception.FileMetaNotFoundException;
-import com.microservices.resource.exception.JsonConvertException;
 import com.microservices.resource.repository.FileMetaRepository;
 import com.microservices.resource.service.AmazonS3Service;
 import com.microservices.resource.service.ResourceProcessingService;
+import com.microservices.resource.service.StorageService;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,28 +29,27 @@ public class ResourceProcessingServiceImpl implements ResourceProcessingService 
     private AmazonS3Service amazonS3Service;
     private FileMetaRepository fileMetaRepository;
     private KafkaMessageProducer kafkaMessageProducer;
+    private StorageService storageService;
+
 
     @Transactional
     @Override
     public long upload(MultipartFile file) {
         String fileName = String.format("%s", file.getOriginalFilename());
-        String key = String.format("%s-%s", fileName, UUID.randomUUID());
+        String key = createBaseKey(fileName);
+
+        StorageDto stagingDetails = storageService.getStagingDetails();
+        String fullKey = getFullKey(stagingDetails.path(), key);
 
         // Saving metadata to db
-        FileMeta fileMeta = new FileMeta(fileName, key, file.getSize());
+        FileMeta fileMeta = new FileMeta(fileName, fullKey, file.getSize(), StorageStatus.STAGING);
         FileMeta saved = fileMetaRepository.save(fileMeta);
 
         // Uploading file to s3
-        amazonS3Service.upload(key, file);
+        amazonS3Service.saveToStaging(stagingDetails.bucket(), saved.getKey(), file);
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode objectNode = objectMapper.createObjectNode();
-        objectNode.put("resourceId", saved.getId());
-        try {
-            kafkaMessageProducer.sendMessage(objectMapper.writeValueAsString(objectNode));
-        } catch (JsonProcessingException e) {
-            throw new JsonConvertException(e.getMessage());
-        }
+        kafkaMessageProducer.sendMessage(saved.getId());
+
         return saved.getId();
     }
 
@@ -71,7 +67,8 @@ public class ResourceProcessingServiceImpl implements ResourceProcessingService 
     @Transactional
     @Override
     public List<Long> deleteByIds(List<Long> ids) {
-        record IdToKey(Long id, String key){}
+        record IdToKey(Long id, String key) {
+        }
 
         List<FileMeta> deleteAllByIdIn = fileMetaRepository.deleteAllByIdIn(ids);
         if (deleteAllByIdIn.isEmpty()) {
@@ -84,5 +81,22 @@ public class ResourceProcessingServiceImpl implements ResourceProcessingService 
         amazonS3Service.delete(idToKeys.stream().map(IdToKey::key).toList());
 
         return idToKeys.stream().map(IdToKey::id).toList();
+    }
+
+    @Override
+    @Transactional
+    public void moveToPermanent(Long id) {
+        FileMeta fileMeta = fileMetaRepository.findById(id).orElseThrow();
+        String newKey = amazonS3Service.moveFileToPermanentStorage(fileMeta);
+        fileMeta.setKey(newKey);
+        fileMeta.setStatus(StorageStatus.PERMANENT);
+        fileMetaRepository.save(fileMeta);
+    }
+
+    public static String createBaseKey(String fileName) {
+        return String.format("%s-%s", fileName, UUID.randomUUID());
+    }
+    public static String getFullKey(String path, String key) {
+        return path + "/" + key;
     }
 }
