@@ -4,11 +4,12 @@ import com.microservices.resourceprocessor.client.ResourceServiceClient;
 import com.microservices.resourceprocessor.client.SongServiceClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
+import org.springframework.cloud.loadbalancer.annotation.LoadBalancerClient;
+import org.springframework.cloud.loadbalancer.annotation.LoadBalancerClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -20,16 +21,35 @@ import java.time.Duration;
 
 @Configuration
 @Slf4j
+@LoadBalancerClients(value = {
+        @LoadBalancerClient(name = "song-service", configuration = SongServiceConfiguration.class),
+        @LoadBalancerClient(name = "resource-service", configuration = ResourceServiceConfiguration.class)
+})
 public class WebClientConfig {
 
-    @Value(value = "${url.song-service}")
+    @Value(value = "#{'${spring.loadbalanced}' ? '${url.song-service}' : '${url.gateway}'}")
     private String songServiceUrl;
-    @Value(value = "${url.resource-service}")
+    @Value(value = "#{'${spring.loadbalanced}' ? '${url.resource-service}' : '${url.gateway}'}")
     private String resourceServiceUrl;
 
+
+    @LoadBalanced
     @Bean
-    public SongServiceClient songServiceClient() {
-        WebClient client = WebClient.builder()
+    @ConditionalOnProperty(prefix="spring.loadbalanced", value="true")
+    WebClient.Builder loadBalancedWebClientBuilder() {
+        return WebClient.builder();
+    }
+
+
+    @Bean
+    @ConditionalOnProperty(prefix="spring.loadbalanced", value="false")
+    WebClient.Builder webClientBuilder() {
+        return WebClient.builder();
+    }
+
+    @Bean
+    public SongServiceClient songServiceClient(WebClient.Builder builder) {
+        WebClient client = builder
                 .baseUrl(songServiceUrl)
                 .filter(retryFilter())
                 .build();
@@ -43,13 +63,13 @@ public class WebClientConfig {
     }
 
     @Bean
-    public ResourceServiceClient resourceServiceClient() {
+    public ResourceServiceClient resourceServiceClient(WebClient.Builder builder) {
         final int size = 16 * 1024 * 1024;
         final ExchangeStrategies strategies = ExchangeStrategies.builder()
                 .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(size))
                 .build();
 
-        WebClient client = WebClient.builder()
+        WebClient client = builder
                 .baseUrl(resourceServiceUrl)
                 .exchangeStrategies(strategies)
                 .filter(retryFilter())

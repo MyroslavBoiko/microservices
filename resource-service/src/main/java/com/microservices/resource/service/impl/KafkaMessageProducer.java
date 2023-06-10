@@ -22,7 +22,7 @@ public class KafkaMessageProducer {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
 
-    @Retryable(retryFor = RuntimeException.class, maxAttempts = 4,
+    @Retryable(value = RuntimeException.class, maxAttempts = 4,
             backoff = @Backoff(maxDelay = 1000L, multiplier = 2), listeners = {"retryListener"})
     public void sendMessage(String msg) {
         CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(RESOURCES_TOPIC, msg);
