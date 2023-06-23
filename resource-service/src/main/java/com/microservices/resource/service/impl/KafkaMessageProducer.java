@@ -1,10 +1,12 @@
 package com.microservices.resource.service.impl;
 
+import brave.propagation.CurrentTraceContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.microservices.resource.exception.UploadEventException;
 import com.microservices.resource.service.AmazonS3Service;
+import io.micrometer.tracing.Tracer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -26,11 +28,13 @@ public class KafkaMessageProducer {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final AmazonS3Service amazonS3Service;
-
+    private final Tracer tracer;
     @Retryable(value = RuntimeException.class, maxAttempts = 4,
             backoff = @Backoff(maxDelay = 1000L, multiplier = 2), listeners = {"retryListener"})
     public void sendMessage(Long id) {
-        String msg = buildMessage(id);
+        String traceId = tracer.currentSpan().context().traceId();
+        String spanId = tracer.currentSpan().context().spanId();
+        String msg = buildMessage(id, traceId, spanId);
 
         CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(RESOURCES_TOPIC, msg);
         future.whenComplete((result, ex) -> {
@@ -44,10 +48,12 @@ public class KafkaMessageProducer {
         });
     }
 
-    private String buildMessage(Long id) {
+    private String buildMessage(Long id, String traceId, String spanId) {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode objectNode = objectMapper.createObjectNode();
         objectNode.put("resourceId", id);
+        objectNode.put("traceId", traceId);
+        objectNode.put("spanId", spanId);
         String message;
         try {
             message = objectMapper.writeValueAsString(objectNode);

@@ -6,6 +6,8 @@ import com.microservices.resourceprocessor.client.ResourceServiceClient;
 import com.microservices.resourceprocessor.client.SongServiceClient;
 import com.microservices.resourceprocessor.dto.SongDto;
 import com.microservices.resourceprocessor.service.MetadataExtractor;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -15,17 +17,17 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class KafkaMessageConsumer {
-    record Message(String resourceId){}
+    record Message(String resourceId, String traceId, String spanId){}
 
     private static final String TOPIC = "resources";
 
     private final SongServiceClient songServiceClient;
     private final ResourceServiceClient resourceServiceClient;
     private final MetadataExtractor metadataExtractor;
+    private final Tracer tracer;
 
     @KafkaListener(topics = TOPIC, groupId = "${spring.kafka.consumer.group-id}")
     public void processResourceCreating(String message) {
-        log.info("Received Message: " + message);
         ObjectMapper objectMapper = new ObjectMapper();
         Message consumedMessage;
         try {
@@ -33,6 +35,9 @@ public class KafkaMessageConsumer {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+        setTraceContext(consumedMessage);
+        log.info("Received Message: " + message);
+
         long id = Long.parseLong(consumedMessage.resourceId());
         byte[] byId = resourceServiceClient.findById(id, "");
         SongDto songDto = metadataExtractor.extractSongMetadata(byId, id);
@@ -43,6 +48,13 @@ public class KafkaMessageConsumer {
         log.info("Song metadata moved to permanent storage {}", songDto);
     }
 
+    private void setTraceContext(Message consumedMessage) {
+        TraceContext traceContext = tracer.traceContextBuilder()
+                .traceId(consumedMessage.traceId())
+                .spanId(consumedMessage.spanId())
+                .build();
+        tracer.currentTraceContext().newScope(traceContext);
+    }
 
 
 }

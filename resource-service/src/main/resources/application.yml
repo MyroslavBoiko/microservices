@@ -47,6 +47,9 @@ management:
   endpoint:
     health:
       show-details: always
+  tracing:
+    sampling:
+      probability: 1.0
   endpoints:
     web:
       exposure:
@@ -73,3 +76,6 @@ resilience4j.circuitbreaker:
       base-config: shared
     permanent:
       base-config: shared
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"

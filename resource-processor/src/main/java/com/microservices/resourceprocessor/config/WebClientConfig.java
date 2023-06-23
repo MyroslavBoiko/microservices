@@ -40,13 +40,6 @@ public class WebClientConfig {
         return WebClient.builder();
     }
 
-
-    @Bean
-    @ConditionalOnProperty(prefix="spring.loadbalanced", value="false")
-    WebClient.Builder webClientBuilder() {
-        return WebClient.builder();
-    }
-
     @Bean
     public SongServiceClient songServiceClient(WebClient.Builder builder) {
         WebClient client = builder
