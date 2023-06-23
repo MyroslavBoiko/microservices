@@ -1,5 +1,5 @@
 server:
-  port: 8085
+  port: ${SERVICE_REGISTRY_PORT:8085}
 spring:
   application:
     name: eureka-discovery-service

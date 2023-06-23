@@ -19,15 +19,20 @@ public class FileMeta {
     @Column(name = "file_name")
     private String fileName;
 
+
     @Column(name = "file_key")
     private String key;
 
     @Column(name = "size")
     private Long size;
 
-    public FileMeta(String fileName, String key, long size) {
+    @Enumerated(EnumType.STRING)
+    private StorageStatus status;
+
+    public FileMeta(String fileName, String key, Long size, StorageStatus status) {
         this.fileName = fileName;
         this.key = key;
         this.size = size;
+        this.status = status;
     }
 }

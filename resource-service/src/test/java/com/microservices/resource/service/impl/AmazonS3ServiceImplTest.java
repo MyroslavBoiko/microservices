@@ -5,7 +5,10 @@ import com.amazonaws.services.s3.model.DeleteObjectsRequest;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.PutObjectResult;
 import com.amazonaws.services.s3.model.S3Object;
+import com.microservices.resource.domain.StorageDto;
 import com.microservices.resource.entity.FileMeta;
+import com.microservices.resource.entity.StorageStatus;
+import com.microservices.resource.service.StorageService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,15 +37,11 @@ class AmazonS3ServiceImplTest {
 
     @Mock
     private AmazonS3 amazonS3;
+    @Mock
+    private StorageService storageService;
 
     @InjectMocks
     private AmazonS3ServiceImpl amazonS3Service;
-
-
-    @BeforeEach
-    void setUp() {
-        ReflectionTestUtils.setField(amazonS3Service, "bucketName", "resources");
-    }
 
     @Test
     void uploadToBucket() {
@@ -54,20 +53,24 @@ class AmazonS3ServiceImplTest {
                 "Hello, World!".getBytes()
         );
 
-        amazonS3Service.upload("test", file);
+        amazonS3Service.saveToStaging("test", "key", file);
 
-        verify(amazonS3).putObject(eq("resources"), eq("test"), any(), any());
+        verify(amazonS3).putObject(eq("test"), eq("key"), any(), any());
     }
 
     @Test
     void downloadFromBucket() {
+        when(storageService.getPermanentDetails())
+                .thenReturn(new StorageDto(2, StorageStatus.PERMANENT.toString(), "permanent", "/perm"));
+
         HttpRange range = HttpRange.createByteRange(0);
 
         FileMeta fileMeta = new FileMeta();
         fileMeta.setKey("key");
         fileMeta.setSize(100L);
+        fileMeta.setStatus(StorageStatus.PERMANENT);
 
-        GetObjectRequest getObjectRequest = new GetObjectRequest("resources", fileMeta.getKey());
+        GetObjectRequest getObjectRequest = new GetObjectRequest("permanent", fileMeta.getKey());
         getObjectRequest.withRange(range.getRangeStart(fileMeta.getSize()), range.getRangeEnd(fileMeta.getSize()));
         S3Object s3Object = new S3Object();
 
@@ -81,6 +84,9 @@ class AmazonS3ServiceImplTest {
 
     @Test
     void deleteFromBucket() {
+        when(storageService.getPermanentDetails())
+                .thenReturn(new StorageDto(2, StorageStatus.PERMANENT.toString(), "permanent", "/perm"));
+
         List<String> keys = List.of("file1", "file2");
 
         amazonS3Service.delete(keys);
@@ -88,7 +94,7 @@ class AmazonS3ServiceImplTest {
         ArgumentCaptor<DeleteObjectsRequest> argumentCaptor = ArgumentCaptor.forClass(DeleteObjectsRequest.class);
         verify(amazonS3).deleteObjects(argumentCaptor.capture());
 
-        assertEquals("resources", argumentCaptor.getValue().getBucketName());
+        assertEquals("permanent", argumentCaptor.getValue().getBucketName());
         assertEquals(keys.get(0), argumentCaptor.getValue().getKeys().get(0).getKey());
         assertEquals(keys.get(1), argumentCaptor.getValue().getKeys().get(1).getKey());
     }

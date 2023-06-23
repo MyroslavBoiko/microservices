@@ -38,7 +38,9 @@ public class KafkaMessageConsumer {
         SongDto songDto = metadataExtractor.extractSongMetadata(byId, id);
         log.info("Metadata extracted from byte array");
         songServiceClient.create(songDto);
-        log.info("Song metadata sent to song service {}", songDto.toString());
+        log.info("Song metadata sent to song service {}", songDto);
+        resourceServiceClient.moveToPermanent(id);
+        log.info("Song metadata moved to permanent storage {}", songDto);
     }
 
 

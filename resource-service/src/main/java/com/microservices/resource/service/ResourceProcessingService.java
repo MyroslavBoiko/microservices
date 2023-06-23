@@ -7,6 +7,7 @@ import java.util.List;
 
 public interface ResourceProcessingService {
     long upload(MultipartFile file);
+    void moveToPermanent(Long id);
     byte[] download(long id, HttpRange range);
     List<Long> deleteByIds(List<Long> ids);
 

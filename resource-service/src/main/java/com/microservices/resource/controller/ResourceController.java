@@ -26,6 +26,12 @@ public class ResourceController {
         return new ResourceUploadResponse(resourceProcessingService.upload(file));
     }
 
+    @PostMapping("/permanent")
+    public ResponseEntity<?> moveToPermanent(@RequestBody Long id) {
+        resourceProcessingService.moveToPermanent(id);
+        return ResponseEntity.ok(true);
+    }
+
     @GetMapping(value = "{id}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public ResponseEntity<byte[]> findById(@PathVariable long id,
                                            @RequestHeader(value = HttpHeaders.RANGE, required = false) String range) {

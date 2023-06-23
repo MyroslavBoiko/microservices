@@ -21,7 +21,8 @@ services:
       default:
         aliases:
           - s3.localhost.localstack.cloud
-          - ${AWS_S3_BUCKET_NAME}.s3.localhost.localstack.cloud
+          - ${AWS_S3_BUCKET_STAGING}.s3.localhost.localstack.cloud
+          - ${AWS_S3_BUCKET_PERMANENT}.s3.localhost.localstack.cloud
   resource_db:
     container_name: resource_db
     image: postgres:latest
@@ -56,6 +57,23 @@ services:
     volumes:
       - ./db-data/songs/:/var/lib/postgresql/data/
       - ./script/songs/sql:/docker-entrypoint-initdb.d/
+  storage_db:
+    container_name: storage_db
+    image: postgres:latest
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=storage
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    ports:
+      - '5436:5432'
+    volumes:
+      - ./db-data/storage/:/var/lib/postgresql/data/
+      - ./script/storage/sql:/docker-entrypoint-initdb.d/
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.2
     container_name: zookeeper
@@ -93,11 +111,11 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
       - AWS_S3_URL=${AWS_S3_URL}
       - AWS_S3_REGION=${AWS_S3_REGION}
-      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}
       - AWS_S3_ACCESS_KEY=${AWS_S3_ACCESS_KEY}
       - AWS_S3_SECRET_KEY=${AWS_S3_SECRET_KEY}
       - EUREKA_URI=${EUREKA_URI}
       - RESOURCE_SERVICE_PORT=${RESOURCE_SERVICE_PORT}
+      - GATEWAY_URL=${GATEWAY_URL}
     depends_on:
       - localstack
       - broker
@@ -137,6 +155,23 @@ services:
       - GATEWAY_URL=${GATEWAY_URL}
     depends_on:
       - broker
+      - service-registry
+      - gateway
+  storage:
+    container_name: storage
+    image: microservices/storage-service:v1
+    build: '../storage-service/'
+    ports:
+      - '8084:8080'
+    environment:
+      - DB_CONNECTION_URL=${STORAGE_DB_URL}
+      - DB_NAME=${STORAGE_DB_NAME}
+      - DB_USERNAME=${STORAGE_DB_USER}
+      - DB_PASSWORD=${STORAGE_DB_PASSWORD}
+      - EUREKA_URI=${EUREKA_URI}
+      - STORAGE_SERVICE_PORT=${STORAGE_SERVICE_PORT}
+    depends_on:
+      - storage_db
       - service-registry
       - gateway
   service-registry:
