@@ -31,7 +31,6 @@ public class ResourceProcessingServiceImpl implements ResourceProcessingService 
     private KafkaMessageProducer kafkaMessageProducer;
     private StorageService storageService;
 
-
     @Transactional
     @Override
     public long upload(MultipartFile file) {

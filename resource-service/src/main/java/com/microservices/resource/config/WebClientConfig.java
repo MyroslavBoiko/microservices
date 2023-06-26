@@ -9,6 +9,7 @@ import org.springframework.cloud.loadbalancer.annotation.LoadBalancerClient;
 import org.springframework.cloud.loadbalancer.annotation.LoadBalancerClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -24,11 +25,6 @@ public class WebClientConfig {
 
     @Value(value = "${url.gateway}")
     private String gatewayUrl;
-
-    @Bean
-    WebClient.Builder webClientBuilder() {
-        return WebClient.builder();
-    }
 
     @Bean
     public StorageClient storageServiceClient(WebClient.Builder builder) {

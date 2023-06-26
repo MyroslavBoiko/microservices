@@ -5,6 +5,7 @@ import com.microservices.storage.payload.DeleteStoragesResponse;
 import com.microservices.storage.payload.StorageDto;
 import com.microservices.storage.service.StorageService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,17 +20,20 @@ import java.util.List;
 @RestController
 @RequestMapping("/storages")
 @RequiredArgsConstructor
+@Slf4j
 public class StorageController {
 
     private final StorageService storageService;
     @PostMapping
     public CreateStorageResponse createStorage(@RequestBody StorageDto storageDto) {
+        log.info("Create storage request");
         int id = storageService.createStorage(storageDto);
         return new CreateStorageResponse(id);
     }
 
     @GetMapping("/{storageType}")
     public StorageDto getStorageByType(@PathVariable(value = "storageType") String storageType) {
+        log.info("Get storage by type request for storage type {}", storageType);
         return storageService.getStorageByType(storageType);
     }
 
