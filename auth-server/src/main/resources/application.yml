@@ -1,0 +1,20 @@
+server:
+  port: ${AUTH_SERVER_PORT:9000}
+  error:
+    include-message: always
+
+spring:
+  application:
+    name: auth-server
+  security:
+    oauth2:
+      authorization-server:
+        client:
+          client-1:
+            registration:
+              client-id: "client"
+              client-secret: "{bcrypt}$2a$10$jdJGhzsiIqYFpjJiYWMl/eKDOd8vdyQis2aynmFN0dgJ53XvpzzwC"
+              client-authentication-methods: "client_secret_basic"
+              authorization-grant-types: "client_credentials,authorization_code,refresh_token"
+              redirect-uris: "https://oauth.pstmn.io/v1/callback"
+            require-authorization-consent: false
