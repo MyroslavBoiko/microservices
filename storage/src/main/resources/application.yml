@@ -21,6 +21,11 @@ spring:
           lob:
             non_contextual_creation: true
         show_sql: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://127.0.0.1:9000
 eureka:
   client:
     serviceUrl:

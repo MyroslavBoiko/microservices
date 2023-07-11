@@ -6,6 +6,7 @@ import com.microservices.storage.payload.StorageDto;
 import com.microservices.storage.service.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,6 +26,7 @@ public class StorageController {
 
     private final StorageService storageService;
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public CreateStorageResponse createStorage(@RequestBody StorageDto storageDto) {
         log.info("Create storage request");
         int id = storageService.createStorage(storageDto);
@@ -43,6 +45,7 @@ public class StorageController {
     }
 
     @DeleteMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public DeleteStoragesResponse deleteStorages(@RequestParam(name = "id") List<Integer> ids) {
         List<Integer> deletedStorages = storageService.deleteStorages(ids);
         return new DeleteStoragesResponse(deletedStorages);
